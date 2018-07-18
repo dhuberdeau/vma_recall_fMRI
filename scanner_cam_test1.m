@@ -3,12 +3,18 @@ AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
 screens=Screen('Screens');
-screenNumber=min(screens);
-[win, rect] = Screen('OpenWindow', screenNumber, [0 0 800 450]);
+screenNumber=max(screens);
+[win, rect] = Screen('OpenWindow', screenNumber);%, [0 0 800 450]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 dev_list = Screen('VideoCaptureDevices');
-grabber = Screen('OpenVideoCapture', win, dev_list(5).DeviceIndex);
+for i_dev = 1%:length(dev_list)
+    try
+        grabber = Screen('OpenVideoCapture', win, dev_list(i_dev).DeviceIndex);
+    catch
+        warning(['dev ', num2str(i_dev), ' failed.'])
+    end
+end
 Screen('StartVideoCapture', grabber, 60, 1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
