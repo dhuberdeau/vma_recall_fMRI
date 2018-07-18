@@ -7,8 +7,8 @@ function varargout = retention_TR_experiment_v5_tracker(varargin)
 AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-% screen_dims = [1600, 900];
-screen_dims = [1920, 1080];
+screen_dims = [1600, 900];
+% screen_dims = [1920, 1080];
 home_position = screen_dims/2;
 TARG_LEN = 400;
 % targ_angles = 15+(0:60:300);
@@ -16,18 +16,18 @@ targ_angles = 0:90:300;
 targ_coords_base = TARG_LEN*[cosd(targ_angles)', sind(targ_angles)'] + home_position;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
-res1 = 1920;
-res2 = 1080;
+res1 = 1280;%1920;
+res2 = 1024;%1080;
+DISC_SIZE = 32;
 screen_dim1 = screen_dims(1);
 screen_dim2 = screen_dims(2);
+REFL_TH = .55;
 
 load('camera_params');
 load('mm_per_pix');
 
 ind1 = repmat((1:res2)', 1, res1);
 ind2 = repmat((1:res1), res2, 1);
-
-DISC_SIZE = 40;
 
 ind1_d = repmat((1:DISC_SIZE:res2)', 1, res1/DISC_SIZE);
 ind2_d = repmat((1:DISC_SIZE:res1), res2/DISC_SIZE, 1);
@@ -91,7 +91,7 @@ bubble_end_diam = TARG_LEN;
 bubble_expand_rate = 800;
 
 %% full session - ramped pPT
-SUB_NUM_ = 'S_DMH_07162018';
+SUB_NUM_ = 'test_dmh_07182018';
 [trial_target_numbers_MASTER, trial_type_MASTER, prescribed_PT_MASTER] = generate_trial_table_E1retention_v5(SUB_NUM_);
 
 screens=Screen('Screens');
@@ -200,7 +200,7 @@ this_trials = 1:1;
                 delays(2,k) = toc(del_1);
                 del_1 = tic;
 %                 im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
-                im_r = b > .75;
+                im_r = b > REFL_TH;
                 trk_y_rd = round(median(ind1_d(im_r)));
                 trk_x_rd = round(median(ind2_d(im_r)));
                 delays(3,k) = toc(del_1);
@@ -210,7 +210,7 @@ this_trials = 1:1;
                 img = permute(img_([3 2 1], :, :), [3 2 1]);
     %             c_r = rgb2hsv(img(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]), max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]), :));
 %                 c_r = rgb2hsv(img);
-                im_r = c_r > .75;
+                im_r = c_r > REFL_TH;
 %                 im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
                 rel_ind2 = ind2(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
                 rel_ind1 = ind1(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
@@ -283,11 +283,19 @@ this_trials = 1:1;
     %                         if keyIsDown && keyCode(home)
                             targ_dist = norm(curr_target - kinematics(k_samp, 2:3));
                             if targ_dist <= 15 %&& temp_jkey
-                                % home pos reached: switch to home state
-                                entrance = 1;
-                                state = 'home';
-                                draw_text_flag = 0;
-                                draw_pic_flag = 0;
+                                % home pos reached: switch to home state at
+                                % next TR
+                                [keyIsDown,secs,keyCode]=KbCheck;
+                                if keyCode('5%')
+                                    % possibly wait a random amount of time
+                                    % before switching to next state
+                                    entrance = 1;
+                                    state = 'home';
+                                    draw_text_flag = 0;
+                                    draw_pic_flag = 0;
+                                else 
+                                    % wait for TR (which sends a "5")
+                                end
                             else
                                 % have not reached home & pressed key1 yet
                             end
