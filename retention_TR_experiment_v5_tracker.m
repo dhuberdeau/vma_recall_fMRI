@@ -81,7 +81,7 @@ sound_data = [tone_signal1, zeros(1, round(.4/Ts)), tone_signal1, zeros(1, round
 sound_data2 = repmat(sound_data, 2, 1);
 PsychPortAudio('FillBuffer', pahandle, sound_data2);
 
-cursor_color = [0 0 0]';
+cursor_color = [200 200 200]';
 cursor_dims = [-7.5 -7.5 7.5 7.5]'; %box dimensions defining circle around center
 target_circle_dims = [-TARG_LEN, -TARG_LEN, TARG_LEN, TARG_LEN];
 target_color = [1 53 53]';
@@ -96,7 +96,7 @@ SUB_NUM_ = 'test_dmh_07182018';
 
 screens=Screen('Screens');
 screenNumber=max(screens);
-[win, rect] = Screen('OpenWindow', screenNumber, []); %[0 0 1600 900]);
+[win, rect] = Screen('OpenWindow', screenNumber, 0); %[0 0 1600 900]);
 
 for block_num = 1:4
     switch block_num
@@ -149,7 +149,7 @@ this_trials = 1:1;
     %% wait for subject to begin new block
     Screen('DrawText', win, 'Please press any key to begin the next block.', round(screen_dim1/2), round(screen_dim2/2));
     Screen('Flip', win);
-    pause;
+    %pause;
     %% run through trial list
 
     try
@@ -200,38 +200,46 @@ this_trials = 1:1;
                 delays(2,k) = toc(del_1);
                 del_1 = tic;
 %                 im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
-                im_r = b > REFL_TH;
+                im_r = b(:,:,3) > REFL_TH;
                 trk_y_rd = round(median(ind1_d(im_r)));
                 trk_x_rd = round(median(ind2_d(im_r)));
                 delays(3,k) = toc(del_1);
                 del_1 = tic;
-    %             img_ = imtext(:, max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]), max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
-                img_ = imtext(:, max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]), max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]));
-                img = permute(img_([3 2 1], :, :), [3 2 1]);
-    %             c_r = rgb2hsv(img(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]), max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]), :));
-%                 c_r = rgb2hsv(img);
-                im_r = c_r > REFL_TH;
-%                 im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
-                rel_ind2 = ind2(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
-                rel_ind1 = ind1(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
-                trk_y_r = median(rel_ind1(im_r));
-                trk_x_r = median(rel_ind2(im_r));
-                delays(4,:) = toc(del_1);
-                del_1 = tic;
-                if ~isempty(trk_x_r) && ~isempty(trk_y_r)
-                    try
-                        calib_pts = undistortPoints([trk_x_r, trk_y_r], camera_params);
-                    catch
+                if ~isempty(trk_y_rd) && ~isempty(trk_x_rd)
+        %             img_ = imtext(:, max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]), max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
+                    img_ = imtext(:, max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]), max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]));
+                    img = permute(img_([3 2 1], :, :), [3 2 1]);
+        %             c_r = rgb2hsv(img(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]), max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]), :));
+                    c_r = rgb2hsv(img);
+                    im_r = c_r(:,:,3) > REFL_TH;
+    %                 im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
+                    rel_ind2 = ind2(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
+                    rel_ind1 = ind1(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
+                    trk_y_r = median(rel_ind1(im_r));
+                    trk_x_r = median(rel_ind2(im_r));
+                    delays(4,:) = toc(del_1);
+                    del_1 = tic;
+                    if ~isempty(trk_x_r) && ~isempty(trk_y_r)
+                        try
+                            calib_pts = undistortPoints([trk_x_r, trk_y_r], camera_params);
+                        catch
+                            calib_pts = nan(1,2);
+                        end
+                    else
                         calib_pts = nan(1,2);
                     end
+                    x(1,k) = calib_pts(1,1)*mm_pix;
+                    y(1,k) = calib_pts(1,2)*mm_pix;
+                    tim(k) = toc(exp_time);
+                    xr = calib_pts(1,1)*screen_dims(1)/res1;
+                    yr = calib_pts(1,2)*screen_dims(2)/res2;
                 else
-                    calib_pts = nan(1,2);
+                    x(1,k) = nan;
+                    y(1,k) = nan;
+                    tim(k) = toc(exp_time);
+                    xr = nan;
+                    yr = nan;
                 end
-                x(1,k) = calib_pts(1,1)*mm_pix;
-                y(1,k) = calib_pts(1,2)*mm_pix;
-                tim(k) = toc(exp_time);
-                xr = calib_pts(1,1)*screen_dims(1)/res1;
-                yr = calib_pts(1,2)*screen_dims(2)/res2;
                 Screen('Close', tex);
                 delays(5,k)= toc(del_1);
                  %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
@@ -286,7 +294,7 @@ this_trials = 1:1;
                                 % home pos reached: switch to home state at
                                 % next TR
                                 [keyIsDown,secs,keyCode]=KbCheck;
-                                if keyCode('5%')
+                                if true %keyCode('5%')
                                     % possibly wait a random amount of time
                                     % before switching to next state
                                     entrance = 1;
