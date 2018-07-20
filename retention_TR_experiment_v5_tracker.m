@@ -47,10 +47,10 @@ delays = nan(5,10000);
 %%
 
 im_list = cell(1,4);
-im_list{1}= imread('shape1.jpg');
-im_list{2}= imread('shape2.jpg');
-im_list{3}= imread('shape3.jpg');
-im_list{4}= imread('shape4.jpg');
+im_list{1}= imread('afasa1.jpg');
+im_list{2}= imread('afasa2.jpg');
+im_list{3}= imread('afasa3.jpg');
+im_list{4}= imread('afasa4.jpg');
 
 CUE_TIME = .250; %sec
 RET_TIME = 3; %sec
