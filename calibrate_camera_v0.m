@@ -40,23 +40,20 @@ imshow(I_calib);
 
 d = detectCheckerboardPoints(I_calib);
 
-dd1 = 17.6;
+dd1 = sqr_size*3;%17.6;
 dd2 = 14.5;
 dd3 = 22.5;
 
-x2 = d(91, 1:2);
+x2 = d(4, 1:2);
 x1 = d(1, 1:2);
-x3 = d(9, 1:2);
+x3 = d(end-3, 1:2);
 
 pix1_2 = norm(x2 - x1);
 mm1_2 = dd1/pix1_2;
 
 pix1_3 = norm(x3 - x1);
-mm1_3 = dd2/pix1_3;
+mm1_3 = dd1/pix1_3;
 
-pix2_3 = norm(x3 - x2);
-mm2_3 = dd3/pix2_3;
-
-mm_pix = mean([mm1_3, mm1_2, mm2_3]);
+mm_pix = mean([mm1_3, mm1_2]);
 
 save mm_per_pix mm_pix
