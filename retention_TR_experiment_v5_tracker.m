@@ -7,8 +7,8 @@ function varargout = retention_TR_experiment_v5_tracker(varargin)
 AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-% screen_dims = [1600, 900];
-screen_dims = [1920, 1080];
+screen_dims = [1600, 900];
+% screen_dims = [1920, 1080];
 home_position = screen_dims/2;
 TARG_LEN = 400;
 % targ_angles = 15+(0:60:300);
@@ -18,10 +18,10 @@ targ_coords_base = TARG_LEN*[cosd(targ_angles)', sind(targ_angles)'] + home_posi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 res1 = 1280;%1920;
 res2 = 1024;%1080;
-res1 = 1920;
-res2 = 1080;
+% res1 = 1920;
+% res2 = 1080;
 DISC_SIZE = 32;
-DISC_SIZE = 40;
+% DISC_SIZE = 40;
 screen_dim1 = screen_dims(1);
 screen_dim2 = screen_dims(2);
 REFL_TH = .55;
@@ -246,8 +246,8 @@ this_trials = 1:1;
     %             b = (double(img_(:,:,1)) - mean(img_(:,:,[2:3]),3))./max(max(double(img_(:,:,1))));
                 delays(2,k) = toc(del_1);
                 del_1 = tic;
-                im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
-%                 im_r = b(:,:,3) > REFL_TH;
+%                 im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
+                im_r = b(:,:,3) > REFL_TH;
                 trk_y_rd = round(median(ind1_d(im_r)));
                 trk_x_rd = round(median(ind2_d(im_r)));
                 delays(3,k) = toc(del_1);
@@ -258,8 +258,8 @@ this_trials = 1:1;
                     img = permute(img_([3 2 1], :, :), [3 2 1]);
         %             c_r = rgb2hsv(img(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]), max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]), :));
                     c_r = rgb2hsv(img);
-%                     im_r = c_r(:,:,3) > REFL_TH;
-                    im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
+                    im_r = c_r(:,:,3) > REFL_TH;
+%                     im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
                     rel_ind2 = ind2(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
                     rel_ind1 = ind1(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
                     trk_y_r = median(rel_ind1(im_r));
