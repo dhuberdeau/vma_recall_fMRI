@@ -7,8 +7,8 @@ function varargout = retention_TR_experiment_v5_tracker(varargin)
 AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-screen_dims = [1600, 900];
-% screen_dims = [1920, 1080];
+% screen_dims = [1600, 900];
+screen_dims = [1920, 1080];
 home_position = screen_dims/2;
 TARG_LEN = 400;
 % targ_angles = 15+(0:60:300);
@@ -18,16 +18,24 @@ targ_coords_base = TARG_LEN*[cosd(targ_angles)', sind(targ_angles)'] + home_posi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 res1 = 1280;%1920;
 res2 = 1024;%1080;
+res1 = 1920;
+res2 = 1080;
 DISC_SIZE = 32;
+DISC_SIZE = 40;
 screen_dim1 = screen_dims(1);
 screen_dim2 = screen_dims(2);
 REFL_TH = .55;
 
 load('camera_params');
 load('mm_per_pix');
-
-ind1 = repmat((1:res2)', 1, res1);
-ind2 = repmat((1:res1), res2, 1);
+try
+    load('camera_angle_calibration.mat');
+    c_rr = cosd(angle_error);
+    s_rr = sind(angle_error);
+    ROT_MAT = [c_rr s_rr; -s_rr c_rr];
+catch
+    ROT_MAT = [1 0; 0 1];
+end
 
 ind1_d = repmat((1:DISC_SIZE:res2)', 1, res1/DISC_SIZE);
 ind2_d = repmat((1:DISC_SIZE:res1), res2/DISC_SIZE, 1);
@@ -38,6 +46,8 @@ ind2 = repmat((1:res1), res2, 1);
 RMIN = 0;
 RMAX = .025;
 
+pre_alloc_samps = 36000; %enough for 10 minute blocks
+pre_alloc_trial = 25*60; %enough for 25 seconds
 x = nan(1, 10000);
 y = nan(1, 10000);
 tim = nan(1, 10000);
@@ -53,13 +63,13 @@ im_list{3}= imread('afasa3.jpg');
 im_list{4}= imread('afasa4.jpg');
 
 CUE_TIME = .250; %sec
-RET_TIME = 3; %sec
+RET_TIME = 6; %sec
 TR_TIME = 1.1; %sec 
 MOV_TIME = 1.9; % (1.1 for targ disp, 1.9 for movement)
 MOV_LIMIT_TIME = .75; %time limit from release of home key to press of another key
 TR_TOLERANCE = .15;
 FB_TIME = .75;
-ITI_TIME = 2; %inter-trial interval time
+ITI_TIME = 3; %inter-trial interval time
 % TEXT_LOC = [600 525];
 TEXT_LOC = home_position;
 TEXT_SIZE = 40;
@@ -84,7 +94,7 @@ PsychPortAudio('FillBuffer', pahandle, sound_data2);
 cursor_color = [200 200 200]';
 cursor_dims = [-7.5 -7.5 7.5 7.5]'; %box dimensions defining circle around center
 target_circle_dims = [-TARG_LEN, -TARG_LEN, TARG_LEN, TARG_LEN];
-target_color = [1 53 53]';
+target_color = [180 180 100]';
 target_dims = [-10 -10 10 10]';
 bubble_start_diam = 2;
 bubble_end_diam = TARG_LEN;
@@ -146,10 +156,40 @@ this_trials = 1:1;
     %% initialize kinematics
     kinematics = nan(10000, 3);
     
-    %% wait for subject to begin new block
-    Screen('DrawText', win, 'Please press any key to begin the next block.', round(screen_dim1/2), round(screen_dim2/2));
-    Screen('Flip', win);
-    %pause;
+    %% setup keyboard or fMRI trigger detection:
+    trigSet = 15;
+    triggering = struct('kbNum', []);
+    
+    DEVICE_NAME = 'Dell KB216 Wired Keyboard';
+    [index devName] = GetKeyboardIndices;
+    for device = 1:length(index)
+        if strcmp(devName(device),DEVICE_NAME)
+            triggering.kbNum = index(device);
+        end
+    end
+    triggering.kbNum = 7;
+    %% wait for TR burn-in to begin new block
+    KbQueueCreate(triggering.kbNum);
+    KbQueueStart(triggering.kbNum);
+%     Screen('DrawText', win, 'Please press any key to begin the next block.', round(screen_dim1/2), round(screen_dim2/2));
+%     Screen('Flip', win);
+%     %pause;
+
+    burnInCount = 0; 
+
+    while burnInCount < 5
+        [keyIsDown,keyCode] = KbQueueCheck(triggering.kbNum);
+         keyPressed = find(keyCode);
+
+
+            if keyIsDown == 1 && ismember(keyPressed,trigSet)
+                burnInCount = burnInCount + 1;
+            end
+
+         clear keyIsDown; clear keyCode; clear keyPressed;
+    end
+
+    fprintf('Burn in time complete. Starting experiment. \n')
     %% run through trial list
 
     try
@@ -160,12 +200,17 @@ this_trials = 1:1;
         Screen('StartVideoCapture', grabber, 60, 1);
         %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-        exp_time = tic;
+%         exp_time = tic;
+        exp_time = GetSecs;
         for i_tr = 1:N_TRS
 
             state = 'prestart';
             entrance = 1;
-            kinematics = nan(5000, 3);
+            kinematics = nan(pre_alloc_trial, 3);
+            flip_onset_times = nan(1, pre_alloc_trial);
+            flip_offset_times = nan(1, pre_alloc_trial);
+            stim_times = nan(1, pre_alloc_trial);
+            image_capture_time = nan(1, pre_alloc_trial);
             k_samp = 1;
             trial_time = tic;
             screen_text_buff = {};
@@ -181,8 +226,9 @@ this_trials = 1:1;
             k_text_buff = 1;
             k_pic_buff = 1;
             k_oval_buff = 0;
-    %         curr_target = targ_coords_base(trial_target_numbers(i_tr), :);
             curr_target = home_position;
+            TR_trig_received = 0;
+
             while ~isequal(state, 'end_state')
 
                 % record position data and draw all text/pics/objects
@@ -190,6 +236,7 @@ this_trials = 1:1;
                 k = sum(~isnan(x(1,:)))+1;
                 del_1 = tic;
                 [tex, pts, nrdropped, imtext]=Screen('GetCapturedImage', win, grabber, 1, [], 2);
+                image_capture_time(k_samp) = pts - exp_time;
                 delays(1,k) = toc(del_1);
                 del_1 = tic;
     %             img = permute(imtext([3,2,1], :,:), [3,2,1]);
@@ -199,8 +246,8 @@ this_trials = 1:1;
     %             b = (double(img_(:,:,1)) - mean(img_(:,:,[2:3]),3))./max(max(double(img_(:,:,1))));
                 delays(2,k) = toc(del_1);
                 del_1 = tic;
-%                 im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
-                im_r = b(:,:,3) > REFL_TH;
+                im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
+%                 im_r = b(:,:,3) > REFL_TH;
                 trk_y_rd = round(median(ind1_d(im_r)));
                 trk_x_rd = round(median(ind2_d(im_r)));
                 delays(3,k) = toc(del_1);
@@ -211,8 +258,8 @@ this_trials = 1:1;
                     img = permute(img_([3 2 1], :, :), [3 2 1]);
         %             c_r = rgb2hsv(img(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]), max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]), :));
                     c_r = rgb2hsv(img);
-                    im_r = c_r(:,:,3) > REFL_TH;
-    %                 im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
+%                     im_r = c_r(:,:,3) > REFL_TH;
+                    im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
                     rel_ind2 = ind2(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
                     rel_ind1 = ind1(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
                     trk_y_r = median(rel_ind1(im_r));
@@ -221,7 +268,8 @@ this_trials = 1:1;
                     del_1 = tic;
                     if ~isempty(trk_x_r) && ~isempty(trk_y_r)
                         try
-                            calib_pts = undistortPoints([trk_x_r, trk_y_r], camera_params);
+                            calib_pts_ = undistortPoints([trk_x_r, trk_y_r], camera_params);
+                            calib_pts = (calib_pts_ - [res1, res2]/2)*ROT_MAT + [res1, res2]/2;
                         catch
                             calib_pts = nan(1,2);
                         end
@@ -230,7 +278,8 @@ this_trials = 1:1;
                     end
                     x(1,k) = calib_pts(1,1)*mm_pix;
                     y(1,k) = calib_pts(1,2)*mm_pix;
-                    tim(k) = toc(exp_time);
+%                     tim(k) = toc(exp_time);
+                    tim(k) = GetSecs - exp_time;
                     xr = calib_pts(1,1)*screen_dims(1)/res1;
                     yr = calib_pts(1,2)*screen_dims(2)/res2;
                 else
@@ -244,7 +293,7 @@ this_trials = 1:1;
                 delays(5,k)= toc(del_1);
                  %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-                kinematics(k_samp, :) = [toc(exp_time), xr, yr];% translate to screen coordinates
+                kinematics(k_samp, :) = [GetSecs - exp_time, xr, yr];% translate to screen coordinates
                 Screen('FillOval', win, [cursor_color, screen_color_buff],...
                     [[kinematics(k_samp, 2:3), kinematics(k_samp, 2:3)]' + cursor_dims, ...
                     screen_oval_buff]);
@@ -269,8 +318,13 @@ this_trials = 1:1;
                     Screen('FillOval', win, [255, 0, 10]',...
                         [kinematics(k_samp, 2:3), kinematics(k_samp, 2:3)]' + cursor_dims);
                 end
-                Screen('Flip', win);
-
+                
+                % THE MAIN EXPERIMENT FLIP (FLIPS SCREEN EVERY SAMPLE):
+                [t_flip_0, t_stim, t_flip_f] = Screen('Flip', win);
+                flip_onset_times(k_samp) = t_flip_0 - exp_time;
+                flip_offset_times(k_samp) = t_flip_f - exp_time;
+                stim_times(k_samp) = t_stim - exp_time;
+                
                 switch state
                     case 'prestart'
                         if entrance == 1
@@ -287,13 +341,22 @@ this_trials = 1:1;
                             Data.Type(i_tr) = trial_type(i_tr);
                             entrance = 0;
                         else
-    %                         [keyIsDown,secs,keyCode]=KbCheck;
-    %                         if keyIsDown && keyCode(home)
+                            %%%%%%%  TR TRIGGERING
+                            [keyIsDown,keyCode] = KbQueueCheck(triggering.kbNum);
+                            keyPressed = find(keyCode);
+
+                            if keyIsDown == 1
+                                if ismember(keyPressed,trigSet)
+                                    TR_trig_received = 1;
+                                end
+                            end
+
+                            clear keyIsDown; clear keyCode; clear keyPressed;
+                            %%%%%%%
                             targ_dist = norm(curr_target - kinematics(k_samp, 2:3));
-                            if targ_dist <= 15 %&& temp_jkey
+                            if targ_dist <= 15 && TR_trig_received
                                 % home pos reached: switch to home state at
                                 % next TR
-                                [keyIsDown,secs,keyCode]=KbCheck;
                                 if true %keyCode('5%')
                                     % possibly wait a random amount of time
                                     % before switching to next state
@@ -304,8 +367,10 @@ this_trials = 1:1;
                                 else 
                                     % wait for TR (which sends a "5")
                                 end
-                            else
-                                % have not reached home & pressed key1 yet
+                            elseif TR_trig_received
+                                % TR occured but not at home.. wait til
+                                % next TR and check again;
+                                TR_trig_received = 0;
                             end
                         end
                     case 'home'
@@ -348,22 +413,22 @@ this_trials = 1:1;
                                         case 1       
                                             temp_alt_targ = [2 3 4];
                                             screen_oval_buff(:, k_oval_buff) = [targ_coords_base(temp_alt_targ(rnd_ind(1)),:)'; targ_coords_base(temp_alt_targ(rnd_ind(1)),:)'] + target_dims;
-                                            screen_color_buff(:, k_oval_buff) = [0; 0; 0];
+                                            screen_color_buff(:, k_oval_buff) = target_color;
                                             %Data.Target(i_tr) = 3;
                                         case 2
                                             temp_alt_targ = [1 3 4];
                                             screen_oval_buff(:, k_oval_buff) = [targ_coords_base(temp_alt_targ(rnd_ind(1)),:)'; targ_coords_base(temp_alt_targ(rnd_ind(1)),:)'] + target_dims;
-                                            screen_color_buff(:, k_oval_buff) = [0; 0; 0];
+                                            screen_color_buff(:, k_oval_buff) = target_color;
                                             %Data.Target(i_tr) = 4;
                                         case 3
                                             temp_alt_targ = [1 2 4];
                                             screen_oval_buff(:, k_oval_buff) = [targ_coords_base(temp_alt_targ(rnd_ind(1)),:)'; targ_coords_base(temp_alt_targ(rnd_ind(1)),:)'] + target_dims;
-                                            screen_color_buff(:, k_oval_buff) = [0; 0; 0];
+                                            screen_color_buff(:, k_oval_buff) = target_color;
                                             %Data.Target(i_tr) = 5;
                                         case 4 
                                             temp_alt_targ = [1 2 3];
                                             screen_oval_buff(:, k_oval_buff) = [targ_coords_base(temp_alt_targ(rnd_ind(1)),:)'; targ_coords_base(temp_alt_targ(rnd_ind(1)),:)'] + target_dims;
-                                            screen_color_buff(:, k_oval_buff) = [0; 0; 0];
+                                            screen_color_buff(:, k_oval_buff) = target_color;
                                             %Data.Target(i_tr) = 6;
                                         otherwise
                                             error('Invalid target name listed');
@@ -395,7 +460,7 @@ this_trials = 1:1;
                                 case 1
                                     k_oval_buff = k_oval_buff + 1;
                                     screen_oval_buff(:, k_oval_buff) = [targ_coords_base(trial_target_numbers(i_tr),:)'; targ_coords_base(trial_target_numbers(i_tr),:)'] + target_dims;
-                                    screen_color_buff(:, k_oval_buff) = [0; 0; 0];
+                                    screen_color_buff(:, k_oval_buff) = target_color;
                                     Data.Target(i_tr) = trial_target_numbers(i_tr);
                                 case 0
                                     %show nothing
@@ -487,10 +552,10 @@ this_trials = 1:1;
                                 if target_shown == 0
                                     k_oval_buff = k_oval_buff + 1;
                                     screen_oval_buff(:, k_oval_buff) = [targ_coords_base(trial_target_numbers(i_tr),:)'; targ_coords_base(trial_target_numbers(i_tr),:)'] + target_dims;
-                                    screen_color_buff(:, k_oval_buff) = [0;0;0];
+                                    screen_color_buff(:, k_oval_buff) = target_color;
                                     target_shown = 1;
                                     target_shown_time = toc(trial_time);
-                                    Data.time_targ_disp(i_tr) = toc(exp_time);
+                                    Data.time_targ_disp(i_tr) = GetSecs - exp_time; %toc(exp_time);
                                 else
                                     % no need to do anything
                                 end
