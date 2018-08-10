@@ -7,8 +7,14 @@ function varargout = retention_TR_experiment_v5_tracker(varargin)
 AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-screen_dims = [1600, 900];
-% screen_dims = [1920, 1080];
+TEST_ROOM_CAMERA = 1;
+
+if TEST_ROOM_CAMERA
+    screen_dims = [1920, 1080];
+else
+    screen_dims = [1600, 900];
+end
+
 home_position = screen_dims/2;
 TARG_LEN = 400;
 % targ_angles = 15+(0:60:300);
@@ -16,12 +22,20 @@ targ_angles = 0:90:300;
 targ_coords_base = TARG_LEN*[cosd(targ_angles)', sind(targ_angles)'] + home_position;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
-res1 = 1280;%1920;
-res2 = 1024;%1080;
+if TEST_ROOM_CAMERA
+    res1 = 1920;
+    res2 = 1080;
+else
+    res1 = 1280;
+    res2 = 1024;
+end
 % res1 = 1920;
 % res2 = 1080;
-DISC_SIZE = 32;
-% DISC_SIZE = 40;
+if TEST_ROOM_CAMERA
+    DISC_SIZE = 40;
+else
+    DISC_SIZE = 32;
+end
 screen_dim1 = screen_dims(1);
 screen_dim2 = screen_dims(2);
 REFL_TH = .55;
@@ -47,7 +61,7 @@ RMIN = 0;
 RMAX = .025;
 
 pre_alloc_samps = 36000; %enough for 10 minute blocks
-pre_alloc_trial = 25*60; %enough for 25 seconds
+pre_alloc_trial = 60*60; %enough for 1 min.
 x = nan(1, 10000);
 y = nan(1, 10000);
 tim = nan(1, 10000);
@@ -112,7 +126,7 @@ for block_num = 1:4
     switch block_num
         case 1
 %             this_trials = 1:12;
-this_trials = 1:1;
+this_trials = 1:2;
             trial_type = trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
@@ -160,14 +174,24 @@ this_trials = 1:1;
     trigSet = 15;
     triggering = struct('kbNum', []);
     
-    DEVICE_NAME = 'Dell KB216 Wired Keyboard';
+    if TEST_ROOM_CAMERA
+        DEVICE_NAME = 'Dell KB216 Wired Keyboard';
+    else
+        DEVICE_NAME = 'Current Designs, Inc. 932';
+    end
     [index devName] = GetKeyboardIndices;
     for device = 1:length(index)
         if strcmp(devName(device),DEVICE_NAME)
             triggering.kbNum = index(device);
         end
     end
-    triggering.kbNum = 7;
+    if TEST_ROOM_CAMERA
+        triggering.kbNum = 7;
+        % for some reason, the linux has two identical keyboards, and 7 is
+        % the index of the one plugged in. might be different for scanner.
+    else
+        % any hard-coding needed for scanner setup, put it here..
+    end
     %% wait for TR burn-in to begin new block
     KbQueueCreate(triggering.kbNum);
     KbQueueStart(triggering.kbNum);
@@ -211,6 +235,8 @@ this_trials = 1:1;
             flip_offset_times = nan(1, pre_alloc_trial);
             stim_times = nan(1, pre_alloc_trial);
             image_capture_time = nan(1, pre_alloc_trial);
+%             trig_record_time = nan(1, pre_alloc_trial);
+            trig_TR_times_all = nan(1, pre_alloc_trial);
             k_samp = 1;
             trial_time = tic;
             screen_text_buff = {};
@@ -230,6 +256,22 @@ this_trials = 1:1;
             TR_trig_received = 0;
 
             while ~isequal(state, 'end_state')
+                
+                %%%%%%%  TR TRIGGERING
+                [keyIsDown,keyCode] = KbQueueCheck(triggering.kbNum);
+                keyPressed = find(keyCode);
+
+                if keyIsDown == 1
+                    if ismember(keyPressed,trigSet)
+                        TR_trig_received = 1;
+                        trig_TR_times_all(k_samp) = GetSecs - exp_time;
+                    else
+                        TR_trig_received = 0;
+                    end
+                end
+
+                clear keyIsDown; clear keyCode; clear keyPressed;
+                %%%%%%%
 
                 % record position data and draw all text/pics/objects
                  %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
@@ -246,8 +288,11 @@ this_trials = 1:1;
     %             b = (double(img_(:,:,1)) - mean(img_(:,:,[2:3]),3))./max(max(double(img_(:,:,1))));
                 delays(2,k) = toc(del_1);
                 del_1 = tic;
-%                 im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
-                im_r = b(:,:,3) > REFL_TH;
+                if TEST_ROOM_CAMERA
+                    im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
+                else
+                    im_r = b(:,:,3) > REFL_TH;
+                end
                 trk_y_rd = round(median(ind1_d(im_r)));
                 trk_x_rd = round(median(ind2_d(im_r)));
                 delays(3,k) = toc(del_1);
@@ -258,8 +303,12 @@ this_trials = 1:1;
                     img = permute(img_([3 2 1], :, :), [3 2 1]);
         %             c_r = rgb2hsv(img(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]), max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]), :));
                     c_r = rgb2hsv(img);
-                    im_r = c_r(:,:,3) > REFL_TH;
-%                     im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
+                    if TEST_ROOM_CAMERA
+                        im_r = inRange(c_r, [.02 1 1], [0 0.5 0.5]);
+                    else
+                        im_r = c_r(:,:,3) > REFL_TH;
+                    end
+                    
                     rel_ind2 = ind2(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
                     rel_ind1 = ind1(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
                     trk_y_r = median(rel_ind1(im_r));
@@ -341,20 +390,22 @@ this_trials = 1:1;
                             Data.Type(i_tr) = trial_type(i_tr);
                             entrance = 0;
                         else
-                            %%%%%%%  TR TRIGGERING
-                            [keyIsDown,keyCode] = KbQueueCheck(triggering.kbNum);
-                            keyPressed = find(keyCode);
-
-                            if keyIsDown == 1
-                                if ismember(keyPressed,trigSet)
-                                    TR_trig_received = 1;
-                                end
-                            end
-
-                            clear keyIsDown; clear keyCode; clear keyPressed;
-                            %%%%%%%
+%                             %%%%%%%  TR TRIGGERING
+%                             [keyIsDown,keyCode] = KbQueueCheck(triggering.kbNum);
+%                             keyPressed = find(keyCode);
+% 
+%                             if keyIsDown == 1
+%                                 if ismember(keyPressed,trigSet)
+%                                     TR_trig_received = 1;
+%                                     trig_record_time(k_samp) = GetSecs - exp_time;
+%                                 end
+%                             end
+% 
+%                             clear keyIsDown; clear keyCode; clear keyPressed;
+%                             %%%%%%%
                             targ_dist = norm(curr_target - kinematics(k_samp, 2:3));
-                            if targ_dist <= 15 && TR_trig_received
+                            if TR_trig_received % to test without tracker operational.
+%                             if targ_dist <= 15 && TR_trig_received % regular operation
                                 % home pos reached: switch to home state at
                                 % next TR
                                 if true %keyCode('5%')
@@ -618,6 +669,19 @@ this_trials = 1:1;
     %                             Screen('Flip', win);
                                 draw_text_flag = 0;
                                 Data.Kinematics{i_tr} = kinematics(~isnan(kinematics(:,1)), :);
+                                try
+                                    Data.EventTimes{i_tr} = [image_capture_time; ...
+                                        flip_onset_times;...
+                                        stim_times;...
+                                        flip_offset_times;...
+                                        trig_TR_times_all(:)'];
+                                catch
+                                    Data.EventTimes{i_tr} = [image_capture_time(:)', zeros(1,10), ...
+                                        flip_onset_times(:)', zeros(1,10),...
+                                        stim_times(:)', zeros(1,10),...
+                                        flip_offset_times(:), zeros(1,10),...
+                                        trig_TR_times_all(:)', zeros(1,10)];
+                                end
                                 state = 'end_state';
                             end
                         end
