@@ -7,7 +7,7 @@ function varargout = retention_TR_experiment_v5_tracker(varargin)
 AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-TEST_ROOM_CAMERA = 1;
+TEST_ROOM_CAMERA = 0;
 
 if TEST_ROOM_CAMERA
     screen_dims = [1920, 1080];
@@ -16,7 +16,7 @@ else
 end
 
 home_position = screen_dims/2;
-TARG_LEN = 400;
+TARG_LEN = 200;
 % targ_angles = 15+(0:60:300);
 targ_angles = 0:90:300;
 targ_coords_base = TARG_LEN*[cosd(targ_angles)', sind(targ_angles)'] + home_position;
@@ -329,7 +329,7 @@ this_trials = 1:1;
                     y(1,k) = calib_pts(1,2)*mm_pix;
 %                     tim(k) = toc(exp_time);
                     tim(k) = GetSecs - exp_time;
-                    xr = calib_pts(1,1)*screen_dims(1)/res1;
+                    xr = (res1 - calib_pts(1,1))*screen_dims(1)/res1;
                     yr = calib_pts(1,2)*screen_dims(2)/res2;
                 else
                     x(1,k) = nan;
@@ -404,8 +404,8 @@ this_trials = 1:1;
 %                             clear keyIsDown; clear keyCode; clear keyPressed;
 %                             %%%%%%%
                             targ_dist = norm(curr_target - kinematics(k_samp, 2:3));
-                            if TR_trig_received % to test without tracker operational.
-%                             if targ_dist <= 15 && TR_trig_received % regular operation
+%                             if TR_trig_received % to test without tracker operational.
+                            if targ_dist <= 15 && TR_trig_received % regular operation
                                 % home pos reached: switch to home state at
                                 % next TR
                                 if true %keyCode('5%')
