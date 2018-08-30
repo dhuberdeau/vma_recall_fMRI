@@ -8,11 +8,12 @@ AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
 TEST_ROOM_CAMERA = 0;
+SKIP_TRIGS = 1;
 
 if TEST_ROOM_CAMERA
     screen_dims = [1920, 1080];
 else
-    screen_dims = [1600, 900];
+    screen_dims = [1920, 1080];
 end
 
 home_position = screen_dims/2;
@@ -34,7 +35,8 @@ end
 if TEST_ROOM_CAMERA
     DISC_SIZE = 40;
 else
-    DISC_SIZE = 32;
+%     DISC_SIZE = 32;
+    DISC_SIZE = 4;
 end
 screen_dim1 = screen_dims(1);
 screen_dim2 = screen_dims(2);
@@ -126,25 +128,25 @@ for block_num = 1:4
     switch block_num
         case 1
 %             this_trials = 1:12;
-this_trials = 1:2;
+this_trials = 1:12;
             trial_type = trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
         case 2
 %             this_trials =12+(1:60);
-this_trials = 1:1;
+this_trials = 1:12;
             trial_type = trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
         case 3
 %             this_trials = 12+60+(1:60);
-this_trials = 1:1;
+this_trials = 1:12;
             trial_type = trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
         case 4
 %             this_trials = 12+120+(1:60);
-this_trials = 1:1;
+this_trials = 1:12;
             trial_type = trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
@@ -175,7 +177,8 @@ this_trials = 1:1;
     triggering = struct('kbNum', []);
     
     if TEST_ROOM_CAMERA
-        DEVICE_NAME = 'Dell KB216 Wired Keyboard';
+        DEVICE_NAME = 'Dell KB216 Wired Keyboard'; %Linux tower
+%         DEVICE_NAME = 'Virtual core XTEST keyboard'; %Linux laptop
     else
         DEVICE_NAME = 'Current Designs, Inc. 932';
     end
@@ -186,7 +189,7 @@ this_trials = 1:1;
         end
     end
     if TEST_ROOM_CAMERA
-        triggering.kbNum = 7;
+%         triggering.kbNum = 7; % for laptop 11, for tower, 7.
         % for some reason, the linux has two identical keyboards, and 7 is
         % the index of the one plugged in. might be different for scanner.
     else
@@ -200,20 +203,27 @@ this_trials = 1:1;
 %     %pause;
 
     burnInCount = 0; 
+    if TEST_ROOM_CAMERA
+        fprintf('Burn in time complete. Starting experiment. \n')
+    else
+        if SKIP_TRIGS
+             fprintf('Burn in time complete. Starting experiment. \n')
+        else
+            while burnInCount < 5
+                [keyIsDown,keyCode] = KbQueueCheck(triggering.kbNum);
+                 keyPressed = find(keyCode);
 
-    while burnInCount < 5
-        [keyIsDown,keyCode] = KbQueueCheck(triggering.kbNum);
-         keyPressed = find(keyCode);
 
+                    if keyIsDown == 1 && ismember(keyPressed,trigSet)
+                        burnInCount = burnInCount + 1;
+                    end
 
-            if keyIsDown == 1 && ismember(keyPressed,trigSet)
-                burnInCount = burnInCount + 1;
+                 clear keyIsDown; clear keyCode; clear keyPressed;
             end
 
-         clear keyIsDown; clear keyCode; clear keyPressed;
+            fprintf('Burn in time complete. Starting experiment. \n')
+        end
     end
-
-    fprintf('Burn in time complete. Starting experiment. \n')
     %% run through trial list
 
     try
@@ -404,6 +414,13 @@ this_trials = 1:1;
 %                             clear keyIsDown; clear keyCode; clear keyPressed;
 %                             %%%%%%%
                             targ_dist = norm(curr_target - kinematics(k_samp, 2:3));
+                            if TEST_ROOM_CAMERA
+                                TR_trig_received = 1;
+                            else
+                                if SKIP_TRIGS
+                                    TR_trig_received = 1;
+                                end
+                            end
 %                             if TR_trig_received % to test without tracker operational.
                             if targ_dist <= 15 && TR_trig_received % regular operation
                                 % home pos reached: switch to home state at

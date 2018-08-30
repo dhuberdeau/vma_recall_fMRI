@@ -58,7 +58,7 @@ while(~keyIsDown)
         rel_ind2 = ind2(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
         rel_ind1 = ind1(max([(trk_y_rd - SUBWIN_SIZE),1]):min([(trk_y_rd + SUBWIN_SIZE),res2]),max([(trk_x_rd - SUBWIN_SIZE),1]):min([(trk_x_rd + SUBWIN_SIZE), res1]));
         trk_y_r = median(rel_ind1(im_r))*screen_dims(1)/res1;
-        trk_x_r = median(rel_ind2(im_r))*screen_dims(2)/res2;
+        trk_x_r = (res1 - median(rel_ind2(im_r)))*screen_dims(2)/res2;
 
     %     trk_x_r = trk_x_rd*screen_dims(1)/res1; % for psych room setup
     % %     trk_x_r = (res1 - trk_x_rd)*screen_dims(1)/res1; % for scanner setup
