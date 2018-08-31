@@ -64,7 +64,7 @@ RMAX = .025;
 
 pre_alloc_samps = 36000; %enough for 10 minute blocks
 pre_alloc_trial = 60*60; %enough for 1 min.
-x = nan(1, 10000);
+x = nan(1, 10000);                    
 y = nan(1, 10000);
 tim = nan(1, 10000);
 delays = nan(5,10000);
@@ -73,10 +73,10 @@ delays = nan(5,10000);
 %%
 
 im_list = cell(1,4);
-im_list{1}= imread('afasa1.jpg');
-im_list{2}= imread('afasa2.jpg');
-im_list{3}= imread('afasa3.jpg');
-im_list{4}= imread('afasa4.jpg');
+im_list{1}= imread('afasa1_inv.jpg');
+im_list{2}= imread('afasa2_inv.jpg');
+im_list{3}= imread('afasa3_inv.jpg');
+im_list{4}= imread('afasa4_inv.jpg');
 
 CUE_TIME = .250; %sec
 RET_TIME = 6; %sec
@@ -91,21 +91,21 @@ TEXT_LOC = home_position;
 TEXT_SIZE = 40;
 SCREEN_COORD_X = screen_dims(1);
 SCREEN_COORD_Y = screen_dims(2);
+% 
+% InitializePsychSound
+% pahandle = PsychPortAudio('Open');
 
-InitializePsychSound
-pahandle = PsychPortAudio('Open');
-
-Ts = 1/44100;
-sound_dur = .1;
-tone_freq1 = 1000;
-tone_freq2 = 1700;
-time = Ts:Ts:.1;
-tone_signal1 = .1*sin(tone_freq1*time);
-tone_signal2 = .1*sin(tone_freq2*time);
-
-sound_data = [tone_signal1, zeros(1, round(.4/Ts)), tone_signal1, zeros(1, round(.4/Ts)), tone_signal2];
-sound_data2 = repmat(sound_data, 2, 1);
-PsychPortAudio('FillBuffer', pahandle, sound_data2);
+% Ts = 1/44100;
+% sound_dur = .1;
+% tone_freq1 = 1000;
+% tone_freq2 = 1700;
+% time = Ts:Ts:.1;
+% tone_signal1 = .1*sin(tone_freq1*time);
+% tone_signal2 = .1*sin(tone_freq2*time);
+% 
+% sound_data = [tone_signal1, zeros(1, round(.4/Ts)), tone_signal1, zeros(1, round(.4/Ts)), tone_signal2];
+% sound_data2 = repmat(sound_data, 2, 1);
+% PsychPortAudio('FillBuffer', pahandle, sound_data2);
 
 cursor_color = [200 200 200]';
 cursor_dims = [-7.5 -7.5 7.5 7.5]'; %box dimensions defining circle around center
@@ -114,7 +114,7 @@ target_color = [180 180 100]';
 target_dims = [-10 -10 10 10]';
 bubble_start_diam = 2;
 bubble_end_diam = TARG_LEN;
-bubble_expand_rate = 800;
+bubble_expand_rate = 400;
 
 %% full session - ramped pPT
 SUB_NUM_ = 'test_dmh_07182018';
@@ -124,24 +124,24 @@ screens=Screen('Screens');
 screenNumber=max(screens);
 [win, rect] = Screen('OpenWindow', screenNumber, 0); %[0 0 1600 900]);
 
-for block_num = 1:4
+for block_num = 1
     switch block_num
         case 1
 %             this_trials = 1:12;
-this_trials = 1:12;
-            trial_type = trial_type_MASTER(this_trials);
+this_trials = 1:24;
+            trial_type = [zeros(1,8), ones(1,8), 2*ones(1,8)];%trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
         case 2
 %             this_trials =12+(1:60);
-this_trials = 1:12;
-            trial_type = trial_type_MASTER(this_trials);
+this_trials = 1:2;
+            trial_type = ones(size(this_trials));%trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
         case 3
 %             this_trials = 12+60+(1:60);
-this_trials = 1:12;
-            trial_type = trial_type_MASTER(this_trials);
+this_trials = 1:2;
+            trial_type = 2*ones(size(this_trials));%trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
         case 4
@@ -259,6 +259,7 @@ this_trials = 1:12;
             draw_pic_flag = 0;
             draw_bubble_flag = 0;
             draw_red_cursor_flag = 0;
+            check_red_cursor_flag = 0;
             k_text_buff = 1;
             k_pic_buff = 1;
             k_oval_buff = 0;
@@ -339,7 +340,11 @@ this_trials = 1:12;
                     y(1,k) = calib_pts(1,2)*mm_pix;
 %                     tim(k) = toc(exp_time);
                     tim(k) = GetSecs - exp_time;
-                    xr = (res1 - calib_pts(1,1))*screen_dims(1)/res1;
+                    if TEST_ROOM_CAMERA
+                        xr = calib_pts(1,1)*screen_dims(1)/res1;
+                    else
+                        xr = (res1 - calib_pts(1,1))*screen_dims(1)/res1;
+                    end
                     yr = calib_pts(1,2)*screen_dims(2)/res2;
                 else
                     x(1,k) = nan;
@@ -359,7 +364,7 @@ this_trials = 1:12;
                 Screen('FrameOval', win, [74, 96, 96]', [home_position home_position]' + target_circle_dims');
                 if draw_text_flag == 1
                     for i_text = 1:length(screen_text_buff)
-                        Screen('DrawText', win, screen_text_buff{i_text}, TEXT_LOC(1), TEXT_LOC(2) + (i_text - 1)*15);
+                        Screen('DrawText', win, screen_text_buff{i_text}, TEXT_LOC(1), TEXT_LOC(2) + (i_text - 1)*15, [255 255 255]);
                     end
                 end
                 if draw_pic_flag == 1
@@ -368,9 +373,11 @@ this_trials = 1:12;
                     end
                 end
                 if draw_bubble_flag == 1
-                    Screen('FrameOval', win, 1, [home_position home_position]' + screen_bubble_buff(:)); 
-                    if norm(kinematics(k_samp, 2:3) - home_position) < screen_bubble_buff(end)
-                        draw_red_cursor_flag = 1;
+                    Screen('FrameOval', win, [255 255 255], [home_position home_position]' + screen_bubble_buff(:));
+                    if check_red_cursor_flag
+                        if norm(kinematics(k_samp, 2:3) - home_position) < screen_bubble_buff(end)
+                            draw_red_cursor_flag = 1;
+                        end
                     end
                 end
                 if draw_red_cursor_flag
@@ -584,7 +591,7 @@ this_trials = 1:12;
                         if entrance == 1
                             % just entered TR state
                             TR_state_time = toc(trial_time);
-                            startTime = PsychPortAudio('Start', pahandle);
+%                             startTime = PsychPortAudio('Start', pahandle);
                             target_shown = 0;
                             mov_begun = 0;
                             mov_ended = 0;
@@ -597,6 +604,18 @@ this_trials = 1:12;
                             state_elapsed_time = (toc(trial_time) - TR_state_time);
                             if state_elapsed_time >= TR_TIME
                                 bubble_rad = (state_elapsed_time - TR_TIME)*bubble_expand_rate;
+                                if bubble_rad > TARG_LEN
+                                    draw_bubble_flag = 0;
+                                else
+                                    screen_bubble_buff = [-bubble_rad; -bubble_rad; bubble_rad; bubble_rad];
+                                    draw_bubble_flag = 1;
+                                    check_red_cursor_flag = 1;
+                                end
+                            elseif state_elapsed_time >= (TR_TIME - (TARG_LEN/bubble_expand_rate))
+                                % the time to start shrinking the bubble
+                                % from the outside in
+                                bubble_rad = TARG_LEN - (state_elapsed_time - (TR_TIME - (TARG_LEN/bubble_expand_rate)))*bubble_expand_rate;
+                                check_red_cursor_flag = 0;
                                 if bubble_rad > TARG_LEN
                                     draw_bubble_flag = 0;
                                 else
