@@ -7,8 +7,9 @@ function varargout = retention_TR_experiment_v5_tracker(varargin)
 AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-TEST_ROOM_CAMERA = 0;
+TEST_ROOM_CAMERA = 1;
 SKIP_TRIGS = 1;
+% for live scanning, set both of above to 0.
 
 if TEST_ROOM_CAMERA
     screen_dims = [1920, 1080];
@@ -79,13 +80,13 @@ im_list{3}= imread('afasa3_inv.jpg');
 im_list{4}= imread('afasa4_inv.jpg');
 
 CUE_TIME = .250; %sec
-RET_TIME = 6; %sec
+% RET_TIME = 6; %sec % 8/31/2018 - assign from trial parameters
 TR_TIME = 1.1; %sec 
 MOV_TIME = 1.9; % (1.1 for targ disp, 1.9 for movement)
 MOV_LIMIT_TIME = .75; %time limit from release of home key to press of another key
 TR_TOLERANCE = .15;
 FB_TIME = .75;
-ITI_TIME = 3; %inter-trial interval time
+% ITI_TIME = 3; %inter-trial interval time %8/31/2018 - assign from trial params
 % TEXT_LOC = [600 525];
 TEXT_LOC = home_position;
 TEXT_SIZE = 40;
@@ -117,39 +118,62 @@ bubble_end_diam = TARG_LEN;
 bubble_expand_rate = 400;
 
 %% full session - ramped pPT
-SUB_NUM_ = 'test_dmh_07182018';
-[trial_target_numbers_MASTER, trial_type_MASTER, prescribed_PT_MASTER] = generate_trial_table_E1retention_v5(SUB_NUM_);
+SUB_NUM_ = 'jeff_pilot_08312018_';
+% [trial_target_numbers_MASTER, trial_type_MASTER, prescribed_PT_MASTER, ret_MASTER, ITI_MASTER, stim_wait_MASTER] = generate_trial_table_E1retention_fMRI_v1(SUB_NUM_);
+load('trial_parameters_trial_params_jeff_pilot_08312018.mat')
+trial_target_numbers_MASTER = trial_target_numbers;
+trial_type_MASTER = trial_type;
+prescribed_PT_MASTER = prescribed_PT;
+ret_MASTER = trial_ret_period;
+ITI_MASTER = trial_ITI;
+stim_wait_MASTER = trial_stim_wait;
 
 screens=Screen('Screens');
 screenNumber=max(screens);
 [win, rect] = Screen('OpenWindow', screenNumber, 0); %[0 0 1600 900]);
 
-for block_num = 1
+for block_num = 3
     switch block_num
         case 1
-%             this_trials = 1:12;
-this_trials = 1:24;
-            trial_type = [zeros(1,8), ones(1,8), 2*ones(1,8)];%trial_type_MASTER(this_trials);
-            trial_target_numbers = trial_target_numbers_MASTER(this_trials);
-            prescribed_PT = prescribed_PT_MASTER(this_trials);
-        case 2
-%             this_trials =12+(1:60);
-this_trials = 1:2;
-            trial_type = ones(size(this_trials));%trial_type_MASTER(this_trials);
-            trial_target_numbers = trial_target_numbers_MASTER(this_trials);
-            prescribed_PT = prescribed_PT_MASTER(this_trials);
-        case 3
-%             this_trials = 12+60+(1:60);
-this_trials = 1:2;
-            trial_type = 2*ones(size(this_trials));%trial_type_MASTER(this_trials);
-            trial_target_numbers = trial_target_numbers_MASTER(this_trials);
-            prescribed_PT = prescribed_PT_MASTER(this_trials);
-        case 4
-%             this_trials = 12+120+(1:60);
-this_trials = 1:12;
+            this_trials = 1:24;
             trial_type = trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
+            retention = ret_MASTER(this_trials);
+            inter_trial_inter = ITI_MASTER(this_trials);
+            stim_wait_time = stim_wait_MASTER(this_trials);
+        case 2
+            this_trials =24+(1:27);
+            trial_type = trial_type_MASTER(this_trials);
+            trial_target_numbers = trial_target_numbers_MASTER(this_trials);
+            prescribed_PT = prescribed_PT_MASTER(this_trials);
+            retention = ret_MASTER(this_trials);
+            inter_trial_inter = ITI_MASTER(this_trials);
+            stim_wait_time = stim_wait_MASTER(this_trials);
+        case 3
+            this_trials = 24+27+(1:27);
+            trial_type = trial_type_MASTER(this_trials);
+            trial_target_numbers = trial_target_numbers_MASTER(this_trials);
+            prescribed_PT = prescribed_PT_MASTER(this_trials);
+            retention = ret_MASTER(this_trials);
+            inter_trial_inter = ITI_MASTER(this_trials);
+            stim_wait_time = stim_wait_MASTER(this_trials);
+        case 4
+            this_trials = 24+2*27+(1:27);
+            trial_type = trial_type_MASTER(this_trials);
+            trial_target_numbers = trial_target_numbers_MASTER(this_trials);
+            prescribed_PT = prescribed_PT_MASTER(this_trials);
+            retention = ret_MASTER(this_trials);
+            inter_trial_inter = ITI_MASTER(this_trials);
+            stim_wait_time = stim_wait_MASTER(this_trials);
+        case 5
+            this_trials = 24+2*27+(1:27);
+            trial_type = trial_type_MASTER(this_trials);
+            trial_target_numbers = trial_target_numbers_MASTER(this_trials);
+            prescribed_PT = prescribed_PT_MASTER(this_trials);
+            retention = ret_MASTER(this_trials);
+            inter_trial_inter = ITI_MASTER(this_trials);
+            stim_wait_time = stim_wait_MASTER(this_trials);
         otherwise
             error('Not a valid block')
     end
@@ -265,7 +289,10 @@ this_trials = 1:12;
             k_oval_buff = 0;
             curr_target = home_position;
             TR_trig_received = 0;
-
+            ITI_TIME = inter_trial_inter(i_tr);
+            RET_TIME = retention(i_tr);
+            STIM_WAIT_TIME = stim_wait_time(i_tr);
+            
             while ~isequal(state, 'end_state')
                 
                 %%%%%%%  TR TRIGGERING
@@ -436,7 +463,7 @@ this_trials = 1:12;
                                     % possibly wait a random amount of time
                                     % before switching to next state
                                     entrance = 1;
-                                    state = 'home';
+                                    state = 'prehome';
                                     draw_text_flag = 0;
                                     draw_pic_flag = 0;
                                 else 
@@ -446,6 +473,21 @@ this_trials = 1:12;
                                 % TR occured but not at home.. wait til
                                 % next TR and check again;
                                 TR_trig_received = 0;
+                            end
+                        end
+                    case 'prehome'
+                        if entrance == 1
+                            % first entrance into prehome state
+                            prehome_start_time = toc(trial_time);
+                            entrance = 0;
+                        else
+                            if (toc(trial_time) - prehome_start_time) < STIM_WAIT_TIME
+                                % actually do nothing.. just wait
+                            else
+                                % extinguish cue and switch to retention state
+    %                             Screen('Flip', win);
+                                entrance = 1;
+                                state = 'home';
                             end
                         end
                     case 'home'
@@ -715,7 +757,7 @@ this_trials = 1:12;
                                     Data.EventTimes{i_tr} = [image_capture_time(:)', zeros(1,10), ...
                                         flip_onset_times(:)', zeros(1,10),...
                                         stim_times(:)', zeros(1,10),...
-                                        flip_offset_times(:), zeros(1,10),...
+                                        flip_offset_times(:)', zeros(1,10),...
                                         trig_TR_times_all(:)', zeros(1,10)];
                                 end
                                 state = 'end_state';
@@ -771,27 +813,15 @@ this_trials = 1:12;
     %% between blocks break
     if block_num < 4
         Screen('Flip', win);
-        Screen('DrawText', win, 'This is a mandatory 30 second break. Tracking has been disabled.', round(screen_dim1/2), round(screen_dim2/2));
-        Screen('Flip', win);
-        pause(10);
-        Screen('DrawText', win, '...20 more seconds', round(screen_dim1/2), round(screen_dim2/2));
-        Screen('Flip', win);
-        pause(10);
-        Screen('DrawText', win, '...10 more seconds', round(screen_dim1/2), round(screen_dim2/2));
-        Screen('Flip', win);
-        pause(5);
-        Screen('DrawText', win, '...5 more seconds', round(screen_dim1/2), round(screen_dim2/2));
-        Screen('Flip', win);
-        pause(5);
-        Screen('DrawText', win, 'Beginning new block now...', round(screen_dim1/2), round(screen_dim2/2));
+        Screen('DrawText', win, 'Well done. Ending block...', round(screen_dim1/2), round(screen_dim2/2));
         Screen('Flip', win);
         pause(2);
     else
         % exit
     end
 end
-Screen('Flip', win);
-Screen('DrawText', win, 'This now completes the experiment. Thank you for participating.', round(screen_dim1/2), round(screen_dim2/2));
-Screen('Flip', win);
-pause;
+% Screen('Flip', win);
+% Screen('DrawText', win, 'This now completes the experiment. Thank you for participating.', round(screen_dim1/2), round(screen_dim2/2));
+% Screen('Flip', win);
+% pause;
 sca;
