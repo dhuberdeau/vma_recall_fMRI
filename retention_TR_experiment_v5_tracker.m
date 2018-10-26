@@ -7,8 +7,8 @@ function varargout = retention_TR_experiment_v5_tracker(varargin)
 AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
-TEST_ROOM_CAMERA = 1;
-SKIP_TRIGS = 1;
+TEST_ROOM_CAMERA = 0;
+SKIP_TRIGS = 0;
 % for live scanning, set both of above to 0.
 
 if TEST_ROOM_CAMERA
@@ -118,9 +118,9 @@ bubble_end_diam = TARG_LEN;
 bubble_expand_rate = 400;
 
 %% full session - ramped pPT
-SUB_NUM_ = 'jeff_pilot_08312018_';
+SUB_NUM_ = 'dmh_test_10262018_';
 % [trial_target_numbers_MASTER, trial_type_MASTER, prescribed_PT_MASTER, ret_MASTER, ITI_MASTER, stim_wait_MASTER] = generate_trial_table_E1retention_fMRI_v1(SUB_NUM_);
-load('trial_parameters_trial_params_jeff_pilot_08312018.mat')
+load('trial_parameters_dmh_test_10262018.mat')
 trial_target_numbers_MASTER = trial_target_numbers;
 trial_type_MASTER = trial_type;
 prescribed_PT_MASTER = prescribed_PT;
@@ -132,7 +132,7 @@ screens=Screen('Screens');
 screenNumber=max(screens);
 [win, rect] = Screen('OpenWindow', screenNumber, 0); %[0 0 1600 900]);
 
-for block_num = 3
+for block_num = 5
     switch block_num
         case 1
             this_trials = 1:24;
@@ -167,7 +167,7 @@ for block_num = 3
             inter_trial_inter = ITI_MASTER(this_trials);
             stim_wait_time = stim_wait_MASTER(this_trials);
         case 5
-            this_trials = 24+2*27+(1:27);
+            this_trials = 24+3*27+(1:27);
             trial_type = trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
