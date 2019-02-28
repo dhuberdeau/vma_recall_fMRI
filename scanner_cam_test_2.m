@@ -1,13 +1,14 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
-screen_dims = [1920, 1080];
-res1 = 1920;%1280;%1920;
-res2 = 1080;%1024;%1080;
+% screen_dims = [1920, 1080];
+screen_dims = [1600 900];
+res1 = 1280;%1920;
+res2 = 1024;%1080;
 ind1 = repmat((1:res2)', 1, res1);
 ind2 = repmat((1:res1), res2, 1);
 DISC_SIZE = 1;
-REFL_TH = .9;
+% REFL_TH = .9;
 
 ind1_d = repmat((1:DISC_SIZE:res2)', 1, res1/DISC_SIZE);
 ind2_d = repmat((1:DISC_SIZE:res1), res2/DISC_SIZE, 1);
@@ -43,8 +44,8 @@ while(~keyIsDown)
     img = permute(img_([3,2,1], :,:), [3,2,1]);
     b = rgb2hsv(img);
 
-    im_r = b(:,:,3) > REFL_TH;
-    %im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
+%     im_r = b(:,:,3) > REFL_TH;
+    im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
 
     trk_y_rd = (median(ind1_d(im_r)));
     trk_x_rd = (median(ind2_d(im_r)));

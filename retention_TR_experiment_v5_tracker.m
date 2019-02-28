@@ -8,7 +8,7 @@ AssertOpenGL;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
 TEST_ROOM_CAMERA = 0;
-SKIP_TRIGS = 0;
+SKIP_TRIGS = 1;
 % for live scanning, set both of above to 0.
 
 if TEST_ROOM_CAMERA
@@ -18,7 +18,7 @@ else
 end
 
 home_position = screen_dims/2;
-TARG_LEN = 200;
+TARG_LEN = 400;
 % targ_angles = 15+(0:60:300);
 targ_angles = 0:90:300;
 targ_coords_base = TARG_LEN*[cosd(targ_angles)', sind(targ_angles)'] + home_position;
@@ -28,8 +28,10 @@ if TEST_ROOM_CAMERA
     res1 = 1920;
     res2 = 1080;
 else
-    res1 = 1280;
-    res2 = 1024;
+    res1 = 1920;
+    res2 = 1080;
+%     res1 = 1280;
+%     res2 = 1024;
 end
 % res1 = 1920;
 % res2 = 1080;
@@ -53,6 +55,22 @@ try
 catch
     ROT_MAT = [1 0; 0 1];
 end
+% try to load in the file specifying a restricted field of view:
+% FOV = [(screen upper left horizontal, screen upper left vertical); 
+%        (horizontal extent of fov, vertical extent of fov)];
+try
+    load('tracker_field_of_view_calibration.mat');
+    fov_height_pix = 10/confirm_mm_conversion_fact; %desired height of fov in pixels
+    fov_width_pix = 20/confirm_mm_conversion_fact; %desired width of fov in pixels
+    fov_top_left_horizontal = mov_field_left_corner(1);
+    fov_top_left_vertical = mov_field_left_corner(2) - fov_height_pix;
+    CAM_FOV = [fov_top_left_horizontal, fov_top_left_vertical;...
+        fov_width_pix, fov_height_pix];
+    home_position_cam = CAM_FOV(1,:);
+catch
+    warning('FOV information not loaded')
+    CAM_FOV = [0 0; screen_dim1 screen_dim2];
+end
 
 ind1_d = repmat((1:DISC_SIZE:res2)', 1, res1/DISC_SIZE);
 ind2_d = repmat((1:DISC_SIZE:res1), res2/DISC_SIZE, 1);
@@ -65,10 +83,10 @@ RMAX = .025;
 
 pre_alloc_samps = 36000; %enough for 10 minute blocks
 pre_alloc_trial = 60*60; %enough for 1 min.
-x = nan(1, 10000);                    
-y = nan(1, 10000);
-tim = nan(1, 10000);
-delays = nan(5,10000);
+x = nan(1, pre_alloc_samps);                    
+y = nan(1, pre_alloc_samps);
+tim = nan(1, pre_alloc_samps);
+delays = nan(5,pre_alloc_samps);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
 
 %%
@@ -118,9 +136,9 @@ bubble_end_diam = TARG_LEN;
 bubble_expand_rate = 400;
 
 %% full session - ramped pPT
-SUB_NUM_ = 'dmh_test_10262018_';
+SUB_NUM_ = 'dmh_test_02282019_';
 % [trial_target_numbers_MASTER, trial_type_MASTER, prescribed_PT_MASTER, ret_MASTER, ITI_MASTER, stim_wait_MASTER] = generate_trial_table_E1retention_fMRI_v1(SUB_NUM_);
-load('trial_parameters_dmh_test_10262018.mat')
+load('trial_parameters_jeff_pilot_08312018.mat')
 trial_target_numbers_MASTER = trial_target_numbers;
 trial_type_MASTER = trial_type;
 prescribed_PT_MASTER = prescribed_PT;
@@ -132,10 +150,10 @@ screens=Screen('Screens');
 screenNumber=max(screens);
 [win, rect] = Screen('OpenWindow', screenNumber, 0); %[0 0 1600 900]);
 
-for block_num = 5
+for block_num = 1
     switch block_num
         case 1
-            this_trials = 1:24;
+            this_trials = 1:1;
             trial_type = trial_type_MASTER(this_trials);
             trial_target_numbers = trial_target_numbers_MASTER(this_trials);
             prescribed_PT = prescribed_PT_MASTER(this_trials);
@@ -329,7 +347,8 @@ for block_num = 5
                 if TEST_ROOM_CAMERA
                     im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
                 else
-                    im_r = b(:,:,3) > REFL_TH;
+%                     im_r = b(:,:,3) > REFL_TH;
+                    im_r = inRange(b, [RMAX 1 1], [RMIN 0.5 0.5]);
                 end
                 trk_y_rd = round(median(ind1_d(im_r)));
                 trk_x_rd = round(median(ind2_d(im_r)));
@@ -368,11 +387,33 @@ for block_num = 5
 %                     tim(k) = toc(exp_time);
                     tim(k) = GetSecs - exp_time;
                     if TEST_ROOM_CAMERA
-                        xr = calib_pts(1,1)*screen_dims(1)/res1;
+                        % translate to fov fractional coordinates:
+                        xr = calib_pts(1,1);
+                        yr = calib_pts(1,2);
+                        
+                        xr = (xr - CAM_FOV(1,1))/CAM_FOV(2,1);
+                        yr = (yr - CAM_FOV(1,2))/CAM_FOV(2,2);
+
+                        % translate to screen coordinates:
+                        xr = xr*screen_dim1;
+                        yr = yr*screen_dim2;
+                        %                         xr = calib_pts(1,1)*screen_dims(1)/res1;
                     else
-                        xr = (res1 - calib_pts(1,1))*screen_dims(1)/res1;
+                        % translate to fov fractional coordinates:
+                        xr = calib_pts(1,1);
+                        yr = calib_pts(1,2);
+                        
+%                         xr = ((CAM_FOV(1,1) + CAM_FOV(2,1)) - xr)/CAM_FOV(2,1);
+                        xr = (xr - CAM_FOV(1,1))/CAM_FOV(2,1);
+                        yr = (yr - CAM_FOV(1,2))/CAM_FOV(2,2);
+
+                        % translate to screen coordinates:
+                        xr = (1 - xr)*screen_dim1;
+                        yr = yr*screen_dim2;
+                        
+%                         xr = (res1 - calib_pts(1,1))*screen_dims(1)/res1;
                     end
-                    yr = calib_pts(1,2)*screen_dims(2)/res2;
+%                     yr = calib_pts(1,2)*screen_dims(2)/res2;
                 else
                     x(1,k) = nan;
                     y(1,k) = nan;
@@ -383,7 +424,9 @@ for block_num = 5
                 Screen('Close', tex);
                 delays(5,k)= toc(del_1);
                  %%%%%%%%%%%%%%%%%%%%%%%%%%%% CAMERA KAPTURE
-
+                
+                 
+                 
                 kinematics(k_samp, :) = [GetSecs - exp_time, xr, yr];% translate to screen coordinates
                 Screen('FillOval', win, [cursor_color, screen_color_buff],...
                     [[kinematics(k_samp, 2:3), kinematics(k_samp, 2:3)]' + cursor_dims, ...
